@@ -87,4 +87,5 @@ extern void WakeupSlave(dwDevice_t *dev);
 extern void RecvFromSlave(dwDevice_t *dev);
 extern void powerADandUWB(uint8_t master);
 
+
 #endif

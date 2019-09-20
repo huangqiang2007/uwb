@@ -25,8 +25,11 @@ volatile uint32_t g_cmd_wake_wait_time; /* the count of 1ms unit */
  *
  * represent 30 * 1ms = 1s timeout
  * */
-#define CMD_FEEDBACK_TIMEOUT 3 /* receive wait response timeout 10ms*/
+#define CMD_FEEDBACK_TIMEOUT 4 /* receive wait response timeout 10ms*/
 volatile uint32_t g_cmd_feedback_timeout; /* the count of 1ms unit */
+
+#define CMD_WAIT_TIMEOUT 3 /* wake slave cmd wait time 3ms*/
+volatile uint32_t g_cmd_wait_timeout;
 
 /*
  * wakeup duration
