@@ -193,7 +193,12 @@ int main(void)
 				break;
 
 			case MAIN_IDLEMODE:
-				g_cur_mode = MAIN_WKUPMODE;
+				if (!pollSleepCMD(&g_dwDev) < 0)
+					g_cur_mode = MAIN_WKUPMODE;
+				break;
+
+			case MAIN_SLEEPMODE:
+				g_cur_mode = MAIN_SLEEPMODE;
 				break;
 
 			default:

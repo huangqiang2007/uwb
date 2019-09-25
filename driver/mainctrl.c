@@ -236,3 +236,48 @@ void RecvFromSlave(dwDevice_t *dev)
 		uartPutData((uint8_t *)&g_RS422DataFr.packets[i], sizeof(struct MainCtrlFrame));
 	}
 }
+
+int checkSleepCMD(struct MainCtrlFrame *recvSlaveFr)
+{
+	/*
+	 * send owner, slave ID and back token, all match, then it indicates
+	 * slave is waken up.
+	 * */
+	if (recvSlaveFr->frameType == ENUM_SLAVE_SLEEP)
+		return 0;
+	else
+		return -1;
+}
+
+bool pollSleepCMD(dwDevice_t *dev)
+{
+	int timeout = 500;
+	int8_t ret = false;
+
+	g_dataRecvDone = false;
+	dwNewReceive(dev);
+	dwStartReceive(dev);
+
+	/*
+	 * if it doesn't receive SLEEP command during 'timeout' time window,
+	 * it will keep original work mode. otherwise change work mode  to
+	 * MAIN_SLEEPMODE.
+	 * */
+	while (timeout--) {
+		if (g_dataRecvDone == true) {
+			if (!checkSleepCMD(&g_recvSlaveFr)) {
+				g_cur_mode = MAIN_SLEEPMODE;
+
+				InitFrame(&g_mainCtrlFr, MAIN_NODE, 6, ENUM_SLAVE_SLEEP_TOKEN);
+				dwSendData(&g_dwDev, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
+				delayms(10);
+				ret = true;
+				break;
+			}
+		}
+
+		delayms(2);
+	}
+
+	return ret;
+}

@@ -13,6 +13,7 @@
 #define TOP 25000
 #define MS_COUNT  3125  //25000000 / 8 / 1000
 #define MAX_MS    20    //65535 / MS_COUNT
+#define MAX_TICK (0xFFFFFFF0 - WAKUP_DURATION)
 
 volatile bool Timer1_overflow;
 volatile uint32_t g_Ticks = 0;
@@ -118,6 +119,24 @@ void timer_init(void)
 
 	setupTimer0();
 	setupTimer1();
+}
+
+/*
+ * precondition: timer0's interrupt interval is 1ms
+ * */
+void delayms(uint32_t ms)
+{
+	uint32_t ticks = 0;
+
+	ticks = ms + g_Ticks;
+
+	if (ticks > MAX_TICK) {
+		ticks = ticks - MAX_TICK;
+		while (g_Ticks < MAX_TICK);
+		while (g_Ticks == MAX_TICK || g_Ticks < ticks);
+	} else {
+		while (g_Ticks < ticks);
+	}
 }
 
 void Delay_us(uint32_t us)
