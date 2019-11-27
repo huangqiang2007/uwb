@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+
+#define SLEEP_DURATION 10000 /* wake up time 610 second*/
 /*
  * UnWake Slave CMD timeout judge
  *
@@ -23,20 +25,18 @@ volatile uint32_t g_cmd_wake_wait_time; /* the count of 1ms unit */
 /*
  * CMD feedback timeout judge
  *
- * represent 30 * 1ms = 1s timeout
+ * represent 4 * 1ms = 4ms timeout
  * */
-#define CMD_FEEDBACK_TIMEOUT 4 /* receive wait response timeout 10ms*/
+//#define CMD_FEEDBACK_TIMEOUT 4 /* receive wait response timeout 10ms*/
 volatile uint32_t g_cmd_feedback_timeout; /* the count of 1ms unit */
-
-#define CMD_WAIT_TIMEOUT 3 /* wake slave cmd wait time 3ms*/
-volatile uint32_t g_cmd_wait_timeout;
+volatile uint8_t CMD_FEEDBACK_TIMEOUT; /* the count of 1ms unit */
 
 /*
  * wakeup duration
  *
  * 600000 * 1ms = 10 minutes
  * */
-#define WAKUP_DURATION 610000 /* wake up time 610 second*/
+#define WAKUP_DURATION 610000//000 /* wake up time 610 second*/
 volatile uint32_t g_wakup_timeout; /* the count of 1ms unit */
 
 /*
@@ -51,6 +51,7 @@ void setupTimer0(void);
 void setupTimer1(void);
 extern void Delay_ms(uint32_t ms);
 extern void Delay_us(uint32_t us);
-extern void timerInit(void);
+extern void timer_init(void);
+extern void delayms(uint32_t ms);
 
 #endif /* INLCUDE_TIMER_H_ */

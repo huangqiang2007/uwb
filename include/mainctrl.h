@@ -35,25 +35,34 @@ enum {MAIN_IDLEMODE=0, MAIN_WKUPMODE, MAIN_SAMPLEMODE, MAIN_SLEEPMODE};
 /*
  * frame type
  * */
-enum {
-	ENUM_SAMPLE_SET = 0x01,
-	ENUM_SAMPLE_SET_TOKEN,
-	ENUM_SAMPLE_DATA,
-	ENUM_SAMPLE_DATA_TOKEN,
-	ENUM_SLAVE_STATUS,
-	ENUM_SLAVE_STATUS_TOKEN,
-	ENUM_SLAVE_SLEEP,
-	ENUM_SLAVE_SLEEP_TOKEN
-};
+#define ENUM_SAMPLE_SET 		0x01
+#define ENUM_SAMPLE_SET_TOKEN 	0x02
+#define ENUM_SAMPLE_DATA 		0x03
+#define ENUM_SAMPLE_DATA_TOKEN 	0x04
+#define ENUM_SLAVE_STATUS 		0x05
+#define ENUM_SLAVE_STATUS_TOKEN 0x06
+#define ENUM_SLAVE_SLEEP 		0x07
+#define ENUM_SLAVE_SLEEP_TOKEN  0x08
+//enum {
+//	ENUM_SAMPLE_SET = 0x01,
+//	ENUM_SAMPLE_SET_TOKEN,
+//	ENUM_SAMPLE_DATA,
+//	ENUM_SAMPLE_DATA_TOKEN,
+//	ENUM_SLAVE_STATUS,
+//	ENUM_SLAVE_STATUS_TOKEN,
+//	ENUM_SLAVE_SLEEP,
+//	ENUM_SLAVE_SLEEP_TOKEN
+//};
 
-#define FRAME_DATA_LEN 64
+
+#define FRAME_DATA_LEN 100
 
 struct MainCtrlFrame {
-	uint8_t head0; //0x55
-	uint8_t head1; //0xaa
+	uint8_t head0; //0xeb
+	uint8_t head1; //0x90
+	uint8_t frameCtrl;
 	uint8_t len; // data len
 	uint8_t serial; // serial num: 0-255
-	uint8_t frameCtrl;
 	uint8_t frameType;
 	uint8_t data[FRAME_DATA_LEN];
 	uint8_t crc0; // crc[7:0]
@@ -79,6 +88,7 @@ struct RS422DataFrame g_RS422DataFr;
 volatile int8_t g_cur_mode;
 volatile int8_t g_slaveWkup;
 volatile bool g_dataRecvDone;
+volatile bool g_dataRecvSleep;
 volatile bool g_dataRecvFail;
 
 extern void globalInit(void);
@@ -86,6 +96,8 @@ extern uint16_t CalFrameCRC(uint8_t data[], int len);
 extern void WakeupSlave(dwDevice_t *dev);
 extern void RecvFromSlave(dwDevice_t *dev);
 extern void powerADandUWB(uint8_t master);
+extern bool pollSleepCMD(dwDevice_t *dev);
+extern int checkSleepCMD(struct MainCtrlFrame *recvSlaveFr);
 
 
 #endif

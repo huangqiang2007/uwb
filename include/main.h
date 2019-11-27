@@ -4,6 +4,9 @@
 #include <stdint.h>
 //#define POWER_WAKEUP //供电MCU休眠模式
 
+volatile uint8_t MAIN_NODE_ID;
+volatile uint8_t SET_NUM;
+
 
 /** DMA channel used for scan sequence sampling adc channel 2, 3 and 4. */
 #define DMA_CHANNEL    	0

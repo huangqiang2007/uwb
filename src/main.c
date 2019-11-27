@@ -121,7 +121,7 @@ int main(void)
 	/*
 	 * Chip errata
 	 * */
-	CHIP_Init();
+	CHIP_Init();//32000000
 
 	/*
 	 * global var init
@@ -154,6 +154,8 @@ int main(void)
 	//SPIConfig(SPI_CLK);
 	SPIDMAInit();
 
+	SET_NUM = 5; //set number
+	MAIN_NODE_ID = (SET_NUM - 1) << 2;
 	//spiDMA_test(&g_dwDev);
 
 	/*
@@ -193,8 +195,8 @@ int main(void)
 				break;
 
 			case MAIN_IDLEMODE:
-				if (!pollSleepCMD(&g_dwDev) < 0)
-					g_cur_mode = MAIN_WKUPMODE;
+//				if (!pollSleepCMD(&g_dwDev))
+				g_cur_mode = MAIN_WKUPMODE;
 				break;
 
 			case MAIN_SLEEPMODE:
@@ -205,8 +207,6 @@ int main(void)
 				g_cur_mode = MAIN_WKUPMODE;
 				break;
 		}
-
-		Delay_ms(1);
 	}
 }
 #endif
