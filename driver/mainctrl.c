@@ -12,7 +12,8 @@
 #include "main.h"
 
 volatile uint8_t g_slaveStatus = 0;
-uint8_t cnt[4];
+uint16_t cnt[4];
+//uint8_t frm_cnt[4];
 
 extern volatile uint32_t g_Ticks;
 //extern volatile uint32_t tx_start_times;
@@ -25,6 +26,7 @@ void globalInit(void)
 	memset((void *)&g_dwMacFrameSend, 0x00, sizeof(g_dwMacFrameSend));
 	memset((void *)&g_dwMacFrameRecv, 0x00, sizeof(g_dwMacFrameRecv));
 	memset(&cnt, 0x00, sizeof(cnt));
+//	memset(&frm_cnt, 0x00, sizeof(frm_cnt));
 	g_dataRecvDone = false;
 	g_dataRecvSleep = false;
 	g_slaveWkup = false;
@@ -55,24 +57,29 @@ uint16_t CalFrameCRC(uint8_t data[], int len)
 	return crc_sum;
 }
 
-void InitFrame(struct MainCtrlFrame *mainCtrlFr, uint8_t src, uint8_t slave,
-		uint8_t type)
+void InitFrame(struct MainCtrlFrame *mainCtrlFr, uint8_t src, uint8_t slave, uint8_t type)
 {
 	uint16_t data_crc = 0;
 
-	mainCtrlFr->head0 = 0xeb;
-	mainCtrlFr->head1 = 0x90;
-	mainCtrlFr->len = FRAME_DATA_LEN; //after frameType and before CRC
-//	if (g_recvSlaveFr.len != 0) mainCtrlFr->serial += 1;
-//	if (g_recvSlaveFr.len == FRAME_DATA_LEN) mainCtrlFr->serial += 1;
-	mainCtrlFr->serial = g_recvSlaveFr.serial + 1;
+	mainCtrlFr->head0 = 0xaa;
+	mainCtrlFr->head1 = 0x55;
+	mainCtrlFr->len = FRAME_LEN; //after frameType and before CRC
+	mainCtrlFr->frameID = slave & 0x7;
+
+	//mainCtrlFr->serial = g_recvSlaveFr.serial + 1;
+	mainCtrlFr->serial = 0;
+
+	mainCtrlFr->frameCtrl_blank[0] = 0xf3;
+	mainCtrlFr->frameCtrl_blank[1] = 0x19;
+	mainCtrlFr->frameCtrl_blank[2] = 0x01;
 	mainCtrlFr->frameCtrl = (slave & 0x7) + src;
+	mainCtrlFr->blank = 0x00;
 	mainCtrlFr->frameType = type & 0xf;
 	memset(mainCtrlFr->data, 0x00, FRAME_DATA_LEN);
 
 	data_crc = CalFrameCRC(mainCtrlFr->data, FRAME_DATA_LEN);
 	mainCtrlFr->crc0 = data_crc & 0xff;
-	mainCtrlFr->crc1 = (data_crc >> 8) & 0xff;
+//	mainCtrlFr->crc1 = (data_crc >> 8) & 0xff;
 }
 
 int checkSlaveWkup(struct MainCtrlFrame *mainCtrlFr, struct MainCtrlFrame *recvSlaveFr)
@@ -159,6 +166,7 @@ void WakeupSlave(dwDevice_t *dev)
 				pollSleepCMD(dev);
 				return;
 			}
+//			frm_cnt[i] = frm_cnt[i] + 1;
 			while (g_Ticks < g_cmd_feedback_timeout - 1) ;
 
 		}
@@ -199,29 +207,25 @@ void RecvFromSlave(dwDevice_t *dev)
 	 * scan each slave and receive sample data
 	 * */
 	for (i = 0; i < SLAVE_NUMS; i++) {
+//		g_cmd_unwake_timeout = g_Ticks + UNWAKE_CMD_TIMEOUT;
 		if ((g_slaveStatus & (1 << i)) == (1 << i)) {
 			/*
 			 * reset command timeout
 			 * */
 			CMD_FEEDBACK_TIMEOUT = 4;
 			ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SAMPLE_DATA);
+
 			if (ret == 0) {
 				cnt[i] = 0;
 				crc_sum = CalFrameCRC(g_recvSlaveFr.data, FRAME_DATA_LEN);
+				if (g_recvSlaveFr.head0 == 0xaa && g_recvSlaveFr.head1 == 0x55){
+					if( g_recvSlaveFr.crc0 == (crc_sum & 0xff) && g_recvSlaveFr.len == 0){
 
-				if (g_recvSlaveFr.head0 == 0xeb && g_recvSlaveFr.head1 == 0x90
-					&& g_recvSlaveFr.crc0 == (crc_sum & 0xff) && g_recvSlaveFr.crc1 == ((crc_sum >> 8) & 0xff)
-					&& g_recvSlaveFr.len == 0){
-//					g_cmd_wake_wait_time = g_Ticks + WAKE_CMD_WAIT_TIME;
-//					while (g_Ticks < g_cmd_wake_wait_time) {
-//						; //wait 1ms for after a receive
-//					}
-					g_recvSlaveFr.serial = g_recvSlaveFr.serial - 1;
+					//g_recvSlaveFr.serial = g_recvSlaveFr.serial - 1;
 					continue;
+					}
+					uartPutData((uint8_t *)&g_recvSlaveFr, sizeof(struct MainCtrlFrame));
 				}
-
-				//memcpy(&g_RS422DataFr.packets[g_RS422DataFr.len++], &g_recvSlaveFr, sizeof(g_recvSlaveFr));
-				uartPutData((uint8_t *)&g_recvSlaveFr, sizeof(struct MainCtrlFrame));
 			}
 			else if (ret == 10){
 				pollSleepCMD(dev);
@@ -229,7 +233,7 @@ void RecvFromSlave(dwDevice_t *dev)
 			}
 			else {
 				cnt[i] += 1;
-				if (cnt[i] > 10){
+				if (cnt[i] > 500){
 					cnt[i] = 0;
 					g_slaveStatus &= ~(1 << i);
 				}
@@ -257,6 +261,7 @@ void RecvFromSlave(dwDevice_t *dev)
 				return;
 			}
 		}
+//		frm_cnt[i] = frm_cnt[i] + 1;
 	}
 
 	/*
@@ -274,6 +279,7 @@ void sleepSlave(dwDevice_t *dev)
 	int i = 0, ret = -1;
 	g_wakup_timeout = g_Ticks + SLEEP_DURATION;
 	g_slaveStatus = 0x0F;
+	g_slaveWkup = true;
 	/*
 	 * wake up duration is 10 minutes
 	 * */
@@ -292,24 +298,25 @@ void sleepSlave(dwDevice_t *dev)
 
 					g_cmd_wake_wait_time = g_Ticks + WAKE_CMD_WAIT_TIME;
 
-					if (g_recvSlaveFr.head0 == 0xeb && g_recvSlaveFr.head1 == 0x90
-						&& g_recvSlaveFr.crc0 == (crc_sum & 0xff) && g_recvSlaveFr.crc1 == ((crc_sum >> 8) & 0xff)
-						&& g_recvSlaveFr.len == 0){
-						g_recvSlaveFr.serial = g_recvSlaveFr.serial - 1;
-						continue;
-					}
+					if (g_recvSlaveFr.head0 == 0xaa && g_recvSlaveFr.head1 == 0x55){
+						if( g_recvSlaveFr.crc0 == (crc_sum & 0xff) && g_recvSlaveFr.len == 0){
 
-					g_slaveStatus &= ~(1 << i);
-					uartPutData((uint8_t *)&g_recvSlaveFr, sizeof(struct MainCtrlFrame));
+						//g_recvSlaveFr.serial = g_recvSlaveFr.serial - 1;
+						continue;
+						}
+						g_slaveStatus &= ~(1 << i);
+						uartPutData((uint8_t *)&g_recvSlaveFr, sizeof(struct MainCtrlFrame));
+					}
 				}
 				else {
 					cnt[i] += 1;
-					if (cnt[i] > 10){
+					if (cnt[i] > 500){
 						cnt[i] = 0;
 						g_slaveStatus &= ~(1 << i);
 					}
 				}
 			}
+//			frm_cnt[i] = frm_cnt[i] + 1;
 		}
 	}
 
@@ -326,7 +333,7 @@ int checkSleepCMD(struct MainCtrlFrame *recvSlaveFr)
 	 * send owner, slave ID and back token, all match, then it indicates
 	 * slave is waken up.
 	 * */
-	if ((recvSlaveFr->frameType == ENUM_SLAVE_SLEEP) && ((recvSlaveFr->frameCtrl) == MAIN_NODE_ID))
+	if ((recvSlaveFr->frameType == ENUM_SLAVE_SLEEP) && ((recvSlaveFr->frameCtrl) == 0))
 		return 0;
 	else
 		return -1;
@@ -350,8 +357,9 @@ bool pollSleepCMD(dwDevice_t *dev)
 //		if (g_dataRecvDone == true) {
 //			if (!checkSleepCMD(&g_recvSlaveFr)) {
 
-
-		sleepSlave(&g_dwDev);
+		while(g_slaveWkup){
+			sleepSlave(&g_dwDev);
+		}
 
 		g_cur_mode = MAIN_SLEEPMODE;
 

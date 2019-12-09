@@ -1008,6 +1008,7 @@ void DMA_Init(DMA_Init_TypeDef *init)
 
   /* Clear/enable DMA interrupts. */
   NVIC_ClearPendingIRQ(DMA_IRQn);
+//  NVIC_SetPriority(DMA_IRQn,1);
   NVIC_EnableIRQ(DMA_IRQn);
 
   /* Enable the bus error interrupt. */

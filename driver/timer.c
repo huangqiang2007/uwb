@@ -67,7 +67,7 @@ void setupTimer0(void)
 
 	/* Enable overflow interrupt */
 	TIMER_IntEnable(TIMER0, TIMER_IF_OF);
-
+//	NVIC_SetPriority(TIMER0_IRQn,3);
 	/* Enable TIMER0 interrupt vector in NVIC */
 	NVIC_EnableIRQ(TIMER0_IRQn);
 
@@ -102,7 +102,7 @@ void setupTimer1(void)
 
 	/* Enable overflow interrupt */
 	TIMER_IntEnable(TIMER1, TIMER_IF_OF);
-
+//	NVIC_SetPriority(TIMER1_IRQn,3);
 	/* Enable TIMER0 interrupt vector in NVIC */
 	NVIC_EnableIRQ(TIMER1_IRQn);
 

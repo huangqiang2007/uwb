@@ -11,7 +11,7 @@
  *
  * represent 2 * 1ms = 2ms timeout
  * */
-#define UNWAKE_CMD_TIMEOUT 2 /* unwake slave timeout 2ms*/
+#define UNWAKE_CMD_TIMEOUT 20 /* unwake slave timeout 2ms*/
 volatile uint32_t g_cmd_unwake_timeout; /* the count of 1ms unit */
 
 /*
@@ -19,7 +19,7 @@ volatile uint32_t g_cmd_unwake_timeout; /* the count of 1ms unit */
  *
  * represent 1 * 1ms = 1ms timeout
  * */
-#define WAKE_CMD_WAIT_TIME 1 /* wake slave cmd wait time 2ms*/
+#define WAKE_CMD_WAIT_TIME 4 /* wake slave cmd wait time 2ms*/
 volatile uint32_t g_cmd_wake_wait_time; /* the count of 1ms unit */
 
 /*
@@ -36,7 +36,7 @@ volatile uint8_t CMD_FEEDBACK_TIMEOUT; /* the count of 1ms unit */
  *
  * 600000 * 1ms = 10 minutes
  * */
-#define WAKUP_DURATION 610000//000 /* wake up time 610 second*/
+#define WAKUP_DURATION 61000//000 /* wake up time 610 second*/
 volatile uint32_t g_wakup_timeout; /* the count of 1ms unit */
 
 /*

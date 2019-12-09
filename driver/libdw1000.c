@@ -78,11 +78,11 @@ void dwInit(dwDevice_t* dev, uint16_t PanID, uint16_t sourceAddr)
 	dev->networkAndAddress[3] = PanID>>8;
 	dev->extendedFrameLength = FRAME_LENGTH_NORMAL;
 	dev->pacSize = PAC_SIZE_8;
-	dev->pulseFrequency = TX_PULSE_FREQ_16MHZ;
+	dev->pulseFrequency = TX_PULSE_FREQ_64MHZ;
 	dev->dataRate = TRX_RATE_6800KBPS;
 	dev->preambleLength = TX_PREAMBLE_LEN_128;
-	dev->preambleCode = PREAMBLE_CODE_16MHZ_2;
-	dev->channel = CHANNEL_1;
+	dev->preambleCode = PREAMBLE_CODE_64MHZ_9;
+	dev->channel = CHANNEL_2;
 	dev->smartPower = true;
 	dev->frameCheck = true;
 	dev->permanentReceive = false;
@@ -682,13 +682,13 @@ void dwSetcentreNodeConfig(dwDevice_t* dev) {
 //		dwSetFrameFilterBehaveCoordinator(dev, true);
 
 		//interrupt active for complete transmit
-		dwInterruptOnSent(dev, true);
+		dwInterruptOnSent(dev, false);
 		//interrupt active for complete receive
 		dwInterruptOnReceived(dev, true);
 		//interrupt active for receiver timeout when dwSetReceiveWaitTimeout() is enable true
 		dwInterruptOnReceiveTimeout(dev, false);
 		//interrupt active for receive error
-		dwInterruptOnReceiveFailed(dev, false);
+		dwInterruptOnReceiveFailed(dev, true);
 		//interrupt active for receive time stamp when time stamp is enable
 		dwInterruptOnReceiveTimestampAvailable(dev, false);
 		//interrupt active for auto acknowledgment trigger when time auto acknowledgment is enable
@@ -744,7 +744,7 @@ void dwSetSubNodeConfig(dwDevice_t* dev) {
 //		//sub_node act as coordinator
 //		dwSetFrameFilterBehaveCoordinator(dev, false);
 
-		dwInterruptOnSent(dev, true);
+		dwInterruptOnSent(dev, false);
 		dwInterruptOnReceived(dev, true);
 		dwInterruptOnReceiveTimeout(dev, false);
 		dwInterruptOnReceiveFailed(dev, true);
@@ -1632,6 +1632,7 @@ void dwGpioInterruptConfig(dwDevice_t *dev)
 	 CMU_ClockEnable(cmuClock_GPIO, true);
 	 GPIO_PinModeSet(gpioPortB, gpioPortB_11, gpioModeInputPullFilter, 1);
 	 NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+//	 NVIC_SetPriority(GPIO_ODD_IRQn,0);
 	 NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	 GPIO_ExtIntConfig(gpioPortB, gpioPortB_11, gpioPortB_11, true, false, true);
 }
@@ -1693,5 +1694,19 @@ void dwSentData(dwDevice_t *dev)
 }
 
 void dwReceiveFailed(dwDevice_t *dev){
+//	int len = 0;
+//
+//	memset((void *)&g_dwMacFrameRecv, 0x00, sizeof(g_dwMacFrameRecv));
+////	dwNewReceive(dev);
+////	dwStartReceive(dev);
+//	len = dwGetDataLength(dev);
+////	dwGetData(dev, (uint8_t *)&g_dwMacFrameRecv, len);
+////	memcpy((uint8_t *)&g_recvSlaveFr, g_dwMacFrameRecv.Payload, sizeof(g_recvSlaveFr));
+//	dwGetData(dev, (uint8_t *)&g_recvSlaveFr, len);
+//	g_recvSlaveFr.serial = g_recvSlaveFr.serial + 1;
+//	g_dataRecvDone = true;
+//
+//	if (!checkSleepCMD(&g_recvSlaveFr))
+//		g_dataRecvSleep = true;
 	g_dataRecvFail = true;
 }
