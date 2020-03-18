@@ -20,8 +20,7 @@
 void clockConfig(void)
 {
 	CMU_ClockEnable(cmuClock_GPIO, true);
-	CMU_ClockEnable(cmuClock_TIMER0, true);
-	CMU_ClockEnable(cmuClock_TIMER1, true);
+
 	timer_init();
 	Delay_ms(5);
 	GPIO_PinModeSet(gpioPortA, 1, gpioModePushPull, 1);
@@ -116,7 +115,6 @@ void spiDMA_test(dwDevice_t *dev)
 	}
 }
 int main(void)
-
 {
 	/*
 	 * Chip errata
@@ -134,14 +132,14 @@ int main(void)
 	clockConfig();
 
 	/*
-	 * power down AD
-	 * */
-	powerADandUWB(0);
-
-	/*
 	 * Timer init
 	 * */
 	timer_init();
+
+	/*
+	 * power down AD
+	 * */
+	powerADandUWB(0);
 
 	/*
 	 * RS422 Uart init for delivering converted data
@@ -153,7 +151,7 @@ int main(void)
 	 * */
 	//SPIConfig(SPI_CLK);
 	SPIDMAInit();
-
+	//LDO;
 	SET_NUM = 5; //set number
 	MAIN_NODE_ID = (SET_NUM - 1) << 2;
 	//spiDMA_test(&g_dwDev);
@@ -193,7 +191,9 @@ int main(void)
 			case MAIN_SAMPLEMODE:
 				RecvFromSlave(&g_dwDev);
 				break;
-
+			case MAIN_SYNCMODE:
+				SyncSlave(&g_dwDev);
+				break;
 			case MAIN_IDLEMODE:
 //				if (!pollSleepCMD(&g_dwDev))
 				g_cur_mode = MAIN_WKUPMODE;

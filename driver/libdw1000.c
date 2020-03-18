@@ -81,10 +81,10 @@ void dwInit(dwDevice_t* dev, uint16_t PanID, uint16_t sourceAddr)
 	dev->pulseFrequency = TX_PULSE_FREQ_64MHZ;
 	dev->dataRate = TRX_RATE_6800KBPS;
 	dev->preambleLength = TX_PREAMBLE_LEN_128;
-	dev->preambleCode = PREAMBLE_CODE_64MHZ_9;
+	dev->preambleCode = PREAMBLE_CODE_64MHZ_9;//XTAL
 	dev->channel = CHANNEL_2;
 	dev->smartPower = true;
-	dev->frameCheck = true;
+	dev->frameCheck = false;
 	dev->permanentReceive = false;
 	dev->deviceMode = IDLE_MODE;
 	dev->wait4resp = false;
@@ -725,7 +725,7 @@ void dwSetSubNodeConfig(dwDevice_t* dev) {
 		//set 3us to transmit ACK after receive and 300us to turn on receiver after transmit
 		dwSetAckAndRespTime(dev, 3, 30);
 		//set CRC frame check
-		dwSuppressFrameCheck(dev, false);
+		dwSuppressFrameCheck(dev, true);
 		//set receiver timeout turn-off time
 		dwSetReceiveWaitTimeout(dev,0);
 
@@ -1668,6 +1668,16 @@ void dwSendData(dwDevice_t *dev, uint8_t data[], uint32_t len)
 }
 
 /*
+ * send data to slave
+ * */
+void dwSendData_noTurnon(dwDevice_t *dev, uint8_t data[], uint32_t len)
+{
+	dwNewTransmit(dev);
+	dwSetData(dev, data, len);
+	dwStartTransmit(dev);
+}
+
+/*
  * receive data from slave
  * */
 void dwRecvData(dwDevice_t *dev)
@@ -1708,5 +1718,5 @@ void dwReceiveFailed(dwDevice_t *dev){
 //
 //	if (!checkSleepCMD(&g_recvSlaveFr))
 //		g_dataRecvSleep = true;
-	g_dataRecvFail = true;
+//	g_dataRecvFail = true;
 }

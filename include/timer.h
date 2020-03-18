@@ -6,6 +6,7 @@
 
 
 #define SLEEP_DURATION 10000 /* wake up time 610 second*/
+#define SLEEP_DURATION 10000 /* wake up time 610 second*/
 /*
  * UnWake Slave CMD timeout judge
  *
@@ -13,6 +14,16 @@
  * */
 #define UNWAKE_CMD_TIMEOUT 20 /* unwake slave timeout 2ms*/
 volatile uint32_t g_cmd_unwake_timeout; /* the count of 1ms unit */
+
+/*
+ * Sync Slave ADC time
+ *
+ * represent 20000 * 1ms = 20s timeout
+ * */
+#define SYNC_CMD_TIMEOUT 2000 /* unwake slave timeout 2ms*/
+volatile uint32_t g_cmd_sync_timeout; /* the count of 1ms unit */
+
+
 
 /*
  * Wake Slave CMD wait time judge
