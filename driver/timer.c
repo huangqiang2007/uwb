@@ -11,14 +11,10 @@
 
 // Freq = 25M
 #define TOP 25000
-#define MS_COUNT  3125  //25000000 / 8 / 1000
 #define MAX_MS    20    //65535 / MS_COUNT
 #define MAX_TICK (0xFFFFFFF0 - WAKUP_DURATION)
 
-volatile bool Timer1_overflow;
-volatile uint32_t g_Ticks = 0;
-volatile uint32_t tx_start_times = 0;
-volatile uint32_t tx_finish_times = 0;
+
 /**************************************************************************//**
  * @brief TIMER0_IRQHandler
  * Interrupt Service Routine TIMER0 Interrupt Line

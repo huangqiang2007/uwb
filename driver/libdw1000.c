@@ -22,6 +22,7 @@
 #include <math.h>
 #include "em_cmu.h"
 #include "em_gpio.h"
+#include "em_timer.h"
 #include "spidrv.h"
 #include "timer.h"
 #include "mainctrl.h"
@@ -682,7 +683,7 @@ void dwSetcentreNodeConfig(dwDevice_t* dev) {
 //		dwSetFrameFilterBehaveCoordinator(dev, true);
 
 		//interrupt active for complete transmit
-		dwInterruptOnSent(dev, false);
+		dwInterruptOnSent(dev, true);
 		//interrupt active for complete receive
 		dwInterruptOnReceived(dev, true);
 		//interrupt active for receiver timeout when dwSetReceiveWaitTimeout() is enable true
@@ -1632,7 +1633,7 @@ void dwGpioInterruptConfig(dwDevice_t *dev)
 	 CMU_ClockEnable(cmuClock_GPIO, true);
 	 GPIO_PinModeSet(gpioPortB, gpioPortB_11, gpioModeInputPullFilter, 1);
 	 NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
-//	 NVIC_SetPriority(GPIO_ODD_IRQn,0);
+	 //NVIC_SetPriority(GPIO_ODD_IRQn,0);
 	 NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	 GPIO_ExtIntConfig(gpioPortB, gpioPortB_11, gpioPortB_11, true, false, true);
 }
@@ -1683,7 +1684,6 @@ void dwSendData_noTurnon(dwDevice_t *dev, uint8_t data[], uint32_t len)
 void dwRecvData(dwDevice_t *dev)
 {
 	int len = 0;
-
 	memset((void *)&g_dwMacFrameRecv, 0x00, sizeof(g_dwMacFrameRecv));
 //	dwNewReceive(dev);
 //	dwStartReceive(dev);
@@ -1700,7 +1700,9 @@ void dwRecvData(dwDevice_t *dev)
 
 void dwSentData(dwDevice_t *dev)
 {
-	;
+	time_us[i] = g_Ticks * MS_COUNT + TIMER_CounterGet(TIMER0); //get the initial time;
+	TD[i] = time_us[i] - timer_cnt[i]; //get the interval time
+	timer_cnt[i] = time_us[i]; //get the initial time
 }
 
 void dwReceiveFailed(dwDevice_t *dev){

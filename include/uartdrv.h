@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #define UARTFRAME_LEN_12B 12
+volatile bool g_uartDMAStarted;
+
 /*
  * convert AD samples into RS422 frame
  * */

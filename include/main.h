@@ -9,7 +9,7 @@ volatile uint8_t SET_NUM;
 
 
 /** DMA channel used for scan sequence sampling adc channel 2, 3 and 4. */
-#define DMA_CHANNEL    	0
+#define DMA_CHANNEL    	2
 #define NUM_SAMPLES    	3
 //#define BATT_MIN_VOL	2080//电池欠压最小值3.8v
 #define BATT_MIN_VOL	1980//电池欠压最小值3.62v

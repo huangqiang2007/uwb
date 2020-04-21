@@ -14,16 +14,7 @@
 volatile uint8_t g_slaveStatus = 0;
 uint8_t cnt[4];
 bool IfRecvFail[4];
-//int8_t slave_adc[4];
-//uint8_t slave_adc_index[4];
-//uint8_t slave_adc_queNum[4];
-//bool adc34_async;
-//bool adc12_async;
-//uint8_t adc_asyncNum[4];
 uint8_t sync_cnt;
-
-extern volatile uint32_t g_Ticks;
-//extern volatile uint32_t tx_start_times;
 
 void globalInit(void)
 {
@@ -33,16 +24,11 @@ void globalInit(void)
 	memset((void *)&g_dwMacFrameSend, 0x00, sizeof(g_dwMacFrameSend));
 	memset((void *)&g_dwMacFrameRecv, 0x00, sizeof(g_dwMacFrameRecv));
 	memset(&cnt, 0x00, sizeof(cnt));
-	memset(&adc_index, 0x00, sizeof(adc_index));
-//	memset(&slave_adc_index, 0x00, sizeof(slave_adc_index));
-//	memset(&slave_adc_queNum, 0x00, sizeof(slave_adc_queNum));
-//	memset(&frm_cnt, 0x00, sizeof(frm_cnt));
+
 	g_dataRecvDone = false;
 	g_dataRecvSleep = false;
 	g_slaveWkup = false;
-//	adc34_async = false;
-//	adc12_async = false;
-//	memset(&adc_asyncNum, 0x00, sizeof(adc_asyncNum));
+
 	sync_cnt = 0;
 	g_cur_mode = MAIN_WKUPMODE;
 }
@@ -71,10 +57,10 @@ uint16_t CalFrameCRC(uint8_t data[], int len)
 	return crc_sum;
 }
 
-void InitFrame(struct MainCtrlFrame *mainCtrlFr, uint8_t src, uint8_t slave, uint8_t type, uint8_t index)
+void InitFrame(struct MainCtrlFrame *mainCtrlFr, uint8_t src, uint8_t slave, uint8_t type, uint32_t TOA_T, uint32_t TD, uint32_t TSTD)
 {
 	uint16_t data_crc = 0;
-
+	uint32_t TOA;
 	mainCtrlFr->head0 = 0xaa;
 	mainCtrlFr->head1 = 0x55;
 	mainCtrlFr->len = FRAME_LEN; //after frameType and before CRC
@@ -83,11 +69,16 @@ void InitFrame(struct MainCtrlFrame *mainCtrlFr, uint8_t src, uint8_t slave, uin
 	//mainCtrlFr->serial = g_recvSlaveFr.serial + 1;
 	mainCtrlFr->serial = 0;
 
-	mainCtrlFr->frameCtrl_blank[0] = 0xf3;
-	mainCtrlFr->frameCtrl_blank[1] = 0x19;
-	mainCtrlFr->frameCtrl_blank[2] = 0x01;
+//	mainCtrlFr->frameCtrl_blank[0] = 0xf3;
+//	mainCtrlFr->frameCtrl_blank[1] = 0x19;
+//	mainCtrlFr->frameCtrl_blank[2] = 0x01;
+	TOA = TOA_T + TD;
+	mainCtrlFr->frameCtrl_blank[0] = TOA;
+	mainCtrlFr->frameCtrl_blank[1] = TOA>>8;
+	mainCtrlFr->frameCtrl_blank[2] = TSTD;
+	mainCtrlFr->adcIndex = TSTD>>8;
 	mainCtrlFr->frameCtrl = (slave & 0x7) + src;
-	mainCtrlFr->adcIndex = index;
+
 	mainCtrlFr->frameType = type & 0xf;
 	memset(mainCtrlFr->data, 0x00, FRAME_DATA_LEN);
 
@@ -117,12 +108,12 @@ int checkSlaveWkup(struct MainCtrlFrame *mainCtrlFr, struct MainCtrlFrame *recvS
  *
  * @ret: -1: talk timeout; 0: talk successfully.
  * */
-uint8_t TalktoSlave(dwDevice_t *dev, uint8_t src, uint8_t slave, uint8_t type, uint8_t index)
+uint8_t TalktoSlave(dwDevice_t *dev, uint8_t src, uint8_t slave, uint8_t type, uint32_t TOA_T, uint32_t TD_t, uint32_t TSTD)
 {
 	int8_t ret = -1;
 //	uint16_t pan_id = PAN_ID1, dest_addr = SLAVE_ADDR1 + (slave - 1), source_addr = CENTER_ADDR1;
 
-	InitFrame(&g_mainCtrlFr, src, slave, type, index);
+	InitFrame(&g_mainCtrlFr, src, slave, type, TOA_T, TD_t, TSTD);
 
 	/*
 	 * to do:  wireless send logic
@@ -135,7 +126,8 @@ uint8_t TalktoSlave(dwDevice_t *dev, uint8_t src, uint8_t slave, uint8_t type, u
 //	dwTxBufferFrameEncode(&g_dwMacFrameSend, 1, 0, pan_id, dest_addr,
 //		source_addr, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
 //	dwSendData(&g_dwDev, (uint8_t *)&g_dwMacFrameSend, sizeof(g_dwMacFrameSend));
-	dwSendData(&g_dwDev, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
+//	dwSendData(&g_dwDev, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
+	dwSendData(&g_dwDev, (uint8_t *)&g_mainCtrlFr, 11);
 
 	while (g_Ticks < g_cmd_feedback_timeout) {
 		if (g_dataRecvDone == true) {
@@ -160,7 +152,8 @@ uint8_t TalktoSlave(dwDevice_t *dev, uint8_t src, uint8_t slave, uint8_t type, u
  * */
 void WakeupSlave(dwDevice_t *dev)
 {
-	int i = 0, ret = -1;
+	//int i = 0;
+	int ret = -1;
 	g_wakup_timeout = g_Ticks + WAKUP_DURATION;
 
 	/*
@@ -171,8 +164,8 @@ void WakeupSlave(dwDevice_t *dev)
 			/*
 			 * reset command timeout
 			 * */
-			CMD_FEEDBACK_TIMEOUT = 3;
-			ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SAMPLE_SET, 0);
+			CMD_FEEDBACK_TIMEOUT = 4;
+			ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SAMPLE_SET, 0, 0, 0);
 			if (ret == 0){
 				g_slaveStatus |= (1 << i);
 			}
@@ -202,26 +195,24 @@ void WakeupSlave(dwDevice_t *dev)
 		g_dataRecvFail = false;
 		g_cur_mode = MAIN_SYNCMODE;
 	}
+	memset(&cnt, 0x00, sizeof(cnt));
 	Delay_ms(100);
 }
-
-//int time_start=0;
-//int time_finish=0;
-//int time=0;
 /*
  * scan all slaves and fetch sample data.
  * */
 
-//static int timer_cnt[4]={0};
-//static int timer_cnt_dif[4]={0};
-
 void RecvFromSlave(dwDevice_t *dev)
 {
 	//uint16_t crc_sum = 0;
-	int i = 0, ret = -1;
+	//int i = 0;
+	int ret = -1;
 	uint8_t src = 0;
 	uint8_t ENUM_TYPE = ENUM_SAMPLE_DATA;
-	uint8_t static err_cnt = 0;
+	static uint16_t time_std[4] = {};
+	//static uint16_t max=0;
+	//static uint32_t time_us = 0;
+	//uint8_t static err_cnt = 0;
 	/*
 	 * scan each slave and receive sample data
 	 * */
@@ -229,29 +220,20 @@ void RecvFromSlave(dwDevice_t *dev)
 	src = MAIN_NODE_ID;
 
 	for (i = 0; i < SLAVE_NUMS; i++) {
-//		g_cmd_unwake_timeout = g_Ticks + UNWAKE_CMD_TIMEOUT;
-//		if (i==0)
-//			timer_cnt_dif[i] = g_Ticks*3125 + TIMER_CounterGet(TIMER0) - timer_cnt[3];
-//		else
-//			timer_cnt_dif[i] = g_Ticks*3125 + TIMER_CounterGet(TIMER0) - timer_cnt[i-1];
-//		timer_cnt[i] = g_Ticks*3125+TIMER_CounterGet(TIMER0);
 		if ((g_slaveStatus & (1 << i)) == (1 << i)) {
-			/*
-			 * reset command timeout
-			 * */
-			CMD_FEEDBACK_TIMEOUT = 3;
+			//time_us = g_Ticks * MS_COUNT + TIMER_CounterGet(TIMER0); //get the initial time
+			CMD_FEEDBACK_TIMEOUT = 4;
 			ENUM_TYPE = ENUM_SAMPLE_DATA;
 			if (cnt[i] != 0){
-				err_cnt++;
-//				if (IfRecvFail[i]){
-//					err_cnt++;
+				//err_cnt++;
 				ENUM_TYPE = ENUM_REPEAT_DATA;
-//					IfRecvFail[i] = false;
-//				}
 			}
-			ret = TalktoSlave(dev, src, i + 1, ENUM_TYPE, adc_index[i]);
 
+			ret = TalktoSlave(dev, src, i + 1, ENUM_TYPE, TOA_T[i], TD[i], time_std[i]);
 			if (ret == 0) {
+				TOA_T[i] = g_Ticks * MS_COUNT + TIMER_CounterGet(TIMER0) - timer_cnt[i]; //get the TOA_T time
+				time_std[i] = g_recvSlaveFr.frameCtrl_blank[2] + (g_recvSlaveFr.adcIndex<<8);
+
 				if (cnt[i] != 0)
 					cnt[i]--;
 
@@ -259,22 +241,15 @@ void RecvFromSlave(dwDevice_t *dev)
 				if (g_recvSlaveFr.head0 == 0xaa && g_recvSlaveFr.head1 == 0x55){
 					//if( g_recvSlaveFr.crc0 == (crc_sum & 0xff) && g_recvSlaveFr.len == 0){
 					if(g_recvSlaveFr.len == 0){
-					//g_recvSlaveFr.serial = g_recvSlaveFr.serial - 1;
 						while (g_Ticks < g_cmd_feedback_timeout);
 						continue;
 					}
-
 					uartPutData((uint8_t *)&g_recvSlaveFr, sizeof(struct MainCtrlFrame));
+					//TryQuickUART_Tx(g_recvSlaveFr);
 
 				}
 			}
-			else if (ret == 10){
-				pollSleepCMD(dev);
-				return;
-			}
 			else {
-//				IfRecvFail[i] = g_dataRecvFail;
-//				g_dataRecvFail = false;
 				cnt[i]++;
 				if (cnt[i] > 50){
 					cnt[i] = 0;
@@ -290,14 +265,10 @@ void RecvFromSlave(dwDevice_t *dev)
 			}
 		}
 		else{
-			CMD_FEEDBACK_TIMEOUT = 3;
-			ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SAMPLE_SET, 0);
+			CMD_FEEDBACK_TIMEOUT = 4;
+			ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SAMPLE_SET, 0, 0, 0);
 			if (ret == 0){
 				g_slaveStatus |= (1 << i);
-			}
-			else if (ret == 10){
-				pollSleepCMD(dev);
-				return;
 			}
 		}
 		while (g_Ticks < g_cmd_feedback_timeout);
@@ -306,13 +277,22 @@ void RecvFromSlave(dwDevice_t *dev)
 
 void SyncSlave(dwDevice_t *dev)
 {
-	InitFrame(&g_mainCtrlFr, 0, 0, ENUM_SLAVE_SYNC, 0);
-	CMD_FEEDBACK_TIMEOUT = 3;
+//	uint32_t time_us;
+//	memset(timer_cnt, 0, 4);
+//	memset(TOA_T, 0, 4);
+//	memset(TD, 0, 4);
+	Delay_ms(3);
+	i = 0;
+	InitFrame(&g_mainCtrlFr, 0, 0, ENUM_SLAVE_SYNC, 0, 0, 0);
+//	CMD_FEEDBACK_TIMEOUT = 3;
 	g_cmd_feedback_timeout = g_Ticks + CMD_FEEDBACK_TIMEOUT;
 	dwSendData(&g_dwDev, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
-	while (g_Ticks < g_cmd_feedback_timeout) {
-	}
+//	while (g_Ticks < g_cmd_feedback_timeout) {
+//	}
+
+	Delay_ms(3);
 	g_cur_mode = MAIN_SAMPLEMODE;
+
 //	g_cmd_sync_timeout = g_Ticks + SYNC_CMD_TIMEOUT;
 }
 
@@ -334,7 +314,7 @@ void sleepSlave(dwDevice_t *dev)
 			if ((g_slaveStatus & (1 << i)) == (1 << i)) {
 
 				CMD_FEEDBACK_TIMEOUT = 4;
-				ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SLAVE_SLEEP, 0);
+				ret = TalktoSlave(dev, MAIN_NODE_ID, i + 1, ENUM_SLAVE_SLEEP, 0, 0, 0);
 				if (ret == 0) {
 					cnt[i] = 0;
 					crc_sum = CalFrameCRC(g_recvSlaveFr.data, FRAME_DATA_LEN);
@@ -400,7 +380,7 @@ bool pollSleepCMD(dwDevice_t *dev)
 //		if (g_dataRecvDone == true) {
 //			if (!checkSleepCMD(&g_recvSlaveFr)) {
 		for (int i=0;i<10;i++){
-			InitFrame(&g_mainCtrlFr, 0, 0, ENUM_SLAVE_SLEEP_TOKEN, 0);
+			InitFrame(&g_mainCtrlFr, 0, 0, ENUM_SLAVE_SLEEP_TOKEN, 0, 0, 0);
 			dwSendData_noTurnon(&g_dwDev, (uint8_t *)&g_mainCtrlFr, sizeof(g_mainCtrlFr));
 			Delay_ms(100);
 		}

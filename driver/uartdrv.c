@@ -4,11 +4,16 @@
 #include "em_device.h"
 #include "em_usart.h"
 #include "em_gpio.h"
+#include "em_dma.h"
 #include "main.h"
+#include "mainctrl.h"
 #include "uartdrv.h"
 
-#define UART_FRAMR_QUEUE_LEN_10 10
 
+void UART_DMAConfig(void);
+
+#define UART_FRAMR_QUEUE_LEN_10 10
+DMA_CB_TypeDef dma_uart_cb;
 /*
  * uart frame queue
  * @num: data item counter
@@ -114,7 +119,7 @@ void uartSetup(void)
 	 * */
 	uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
 	uartInit.refFreq      = 0;              /* Provide information on reference frequency. When set to 0, the reference frequency is */
-	uartInit.baudrate     = 256000;         /* Baud rate *///115200 transfers to 148720
+	uartInit.baudrate     = 460800;         /* Baud rate *///115200 transfers to 148720
 	uartInit.oversampling = usartOVS8;     /* Oversampling. Range is 4x, 6x, 8x or 16x */
 	uartInit.databits     = usartDatabits8; /* Number of data bits. Range is 4 to 10 */
 	uartInit.parity       = usartNoParity; /* Parity mode */
@@ -133,24 +138,128 @@ void uartSetup(void)
 	 * */
 	USART_IntClear(uart, _USART_IFC_MASK);
 	USART_IntEnable(uart, USART_IEN_RXDATAV);
-	NVIC_ClearPendingIRQ(USART0_RX_IRQn);
-//	NVIC_SetPriority(USART0_RX_IRQn,3);
+//	NVIC_ClearPendingIRQ(USART0_RX_IRQn);
 	NVIC_ClearPendingIRQ(USART0_TX_IRQn);
-//	NVIC_SetPriority(USART0_TX_IRQn,5);
-	NVIC_EnableIRQ(USART0_RX_IRQn);
+//	NVIC_EnableIRQ(USART0_RX_IRQn);
 	NVIC_EnableIRQ(USART0_TX_IRQn);
 
 	/*
 	 * Enable I/O pins at UART1 location #2
 	 * */
 	uart->ROUTE = USART_ROUTE_RXPEN | USART_ROUTE_TXPEN | USART_ROUTE_LOCATION_LOC0;
-
+//	UART_DMAConfig();
 	/*
 	 * Enable UART
 	 * */
 	USART_Enable(uart, usartEnable);
 }
 
+void UART_DMA_callback(unsigned int channel, bool primary, void *user)
+{
+	/*
+	 * update 'rxBuf.rdI' offset
+	 * */
+	g_uartDMAStarted = false;
+	//TryQuickUART_Tx();
+
+#if 0
+	if (primary == true)
+		memcpy((void *)&rxBuf.data[rxBuf.wrI], (void *)g_primaryResultBuffer, CMD_LEN);
+	else
+		memcpy((void *)&rxBuf.data[rxBuf.wrI], (void *)g_alterResultBuffer, CMD_LEN);
+
+	rxBuf.wrI = (rxBuf.wrI + CMD_LEN) % BUFFERSIZE;
+	rxBuf.pendingBytes += CMD_LEN;
+
+	/* Re-activate the DMA */
+	DMA_RefreshPingPong(
+		channel,
+		primary,
+		false,
+		NULL,
+		NULL,
+		CMD_LEN - 1,
+		false);
+
+	USART0->CMD |= USART_CMD_RXEN;
+#endif
+}
+
+void UART_DMAConfig(void)
+{
+	DMA_CfgDescr_TypeDef descrCfg;
+	DMA_CfgChannel_TypeDef chnlCfg;
+
+//	CMU_ClockEnable(cmuClock_DMA, true);
+
+	/*
+	* Configure DMA channel used
+	* */
+	dma_uart_cb.cbFunc = UART_DMA_callback;
+	dma_uart_cb.userPtr = NULL;
+
+	chnlCfg.highPri = false;
+	chnlCfg.enableInt = true;
+	chnlCfg.select = DMAREQ_USART0_TXBL;
+	chnlCfg.cb = &dma_uart_cb;
+	DMA_CfgChannel(DMA_CHANNEL, &chnlCfg);
+
+	/*
+	* one byte per transfer
+	* */
+	descrCfg.dstInc = dmaDataIncNone;
+	descrCfg.srcInc = dmaDataInc1;
+	descrCfg.size = dmaDataSize1;
+	descrCfg.arbRate = dmaArbitrate1;
+	descrCfg.hprot = 0;
+	DMA_CfgDescr(DMA_CHANNEL, true, &descrCfg);
+
+#if 0
+	DMA_CfgDescr(DMA_CHANNEL, false, &descrCfg);
+	// Start DMA
+	DMA_ActivatePingPong(
+		DMA_CHANNEL,
+		false,
+		(void *)&g_primaryResultBuffer, // primary destination
+		(void *)&(USART0->RXDATA), // primary source
+		CMD_LEN - 1,
+		(void *)&g_alterResultBuffer, // alternate destination
+		(void *)&(USART0->RXDATA), // alternate source
+		CMD_LEN - 1);
+#endif
+//	DMA_ActivateBasic(
+//		DMA_CHANNEL,
+//		true,
+//		false,
+//		(void *)&(USART0->TXDATA), // primary destination
+//		(void *)&rxBuf.data[0], // primary source
+//		CMD_LEN - 1
+//		);
+}
+
+
+
+/*
+ * starts the UART-tx in UART DMA done callback function if there is new data in rxBuf,
+ * in order to more quickly transferring the data.
+ * */
+void TryQuickUART_Tx(struct MainCtrlFrame uartSendFrm)
+{
+	if (!g_uartDMAStarted) {
+
+		DMA_ActivateBasic(
+			DMA_CHANNEL,
+			true,
+			false,
+			(void *)&(USART0->TXDATA), // primary destination
+			(void *)&uartSendFrm, // primary source
+			sizeof(struct MainCtrlFrame ) - 1
+		);
+
+		USART_Enable(USART0, usartEnableTx);
+		g_uartDMAStarted = true;
+	}
+}
 
 /*
  * @brief  uartGetChar function

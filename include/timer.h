@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define MS_COUNT  3125  //25000000 / 8 / 1000
 
 #define SLEEP_DURATION 10000 /* wake up time 610 second*/
 #define SLEEP_DURATION 10000 /* wake up time 610 second*/
@@ -57,6 +58,9 @@ volatile uint32_t g_wakup_timeout; /* the count of 1ms unit */
  * */
 #define IDLE_JUDGE 300000
 volatile uint32_t g_idle_judge;
+
+volatile bool Timer1_overflow;
+volatile uint32_t g_Ticks;
 
 void setupTimer0(void);
 void setupTimer1(void);

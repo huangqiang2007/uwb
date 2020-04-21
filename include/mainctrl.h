@@ -51,10 +51,10 @@ enum {
 };
 
 
-#define FRAME_DATA_LEN 64
-#define FRAME_LEN 76
-//#define FRAME_DATA_LEN 100
-//#define FRAME_LEN 112
+//#define FRAME_DATA_LEN 64
+//#define FRAME_LEN 76
+#define FRAME_DATA_LEN 100
+#define FRAME_LEN 112
 
 struct MainCtrlFrame {
 	uint8_t head0; //0xeb
@@ -91,7 +91,11 @@ volatile int8_t g_slaveWkup;
 volatile bool g_dataRecvDone;
 volatile bool g_dataRecvSleep;
 volatile bool g_dataRecvFail;
-uint8_t adc_index[4];
+uint32_t timer_cnt[4];
+uint32_t TOA_T[4];
+uint32_t TD[4];
+uint32_t time_us[4];
+volatile int i;
 
 extern void globalInit(void);
 extern uint16_t CalFrameCRC(uint8_t data[], int len);

@@ -48,6 +48,7 @@ void clockConfig(void)
 	CMU_ClockEnable(cmuClock_USART0, true);
 	CMU_ClockEnable(cmuClock_TIMER0, true);
 	CMU_ClockEnable(cmuClock_TIMER1, true);
+	CMU_ClockEnable(cmuClock_DMA, true);
 }
 
 #if 0
@@ -140,17 +141,17 @@ int main(void)
 	 * power down AD
 	 * */
 	powerADandUWB(0);
+	/*
+	 * SPI master config
+	 * */
+	//SPIConfig(SPI_CLK);
+	SPIDMAInit();
 
 	/*
 	 * RS422 Uart init for delivering converted data
 	 * */
 	uartSetup();
 
-	/*
-	 * SPI master config
-	 * */
-	//SPIConfig(SPI_CLK);
-	SPIDMAInit();
 	//LDO;
 	SET_NUM = 5; //set number
 	MAIN_NODE_ID = (SET_NUM - 1) << 2;

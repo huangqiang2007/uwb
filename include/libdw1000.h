@@ -232,6 +232,7 @@ void dwSentData(dwDevice_t *dev);
 void dwReceiveFailed(dwDevice_t *dev);
 void dwSendData_noTurnon(dwDevice_t *dev, uint8_t data[], uint32_t len);
 
+
 /* Error codes */
 #define DW_ERROR_OK 0
 #define DW_ERROR_WRONG_ID 1
