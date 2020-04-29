@@ -147,6 +147,8 @@
 #define RX_TIME 0x15
 #define LEN_RX_TIME 14
 #define RX_STAMP_SUB 0x00
+#define RX_RAWSTAMP_L_SUB 0x08
+#define RX_RAWSTAMP_H_SUB 0x0c
 #define FP_AMPL1_SUB 0x07
 #define LEN_RX_STAMP LEN_STAMP
 #define LEN_FP_AMPL1 2
@@ -167,6 +169,8 @@
 #define TX_TIME 0x17
 #define LEN_TX_TIME 10
 #define TX_STAMP_SUB 0
+#define TX_RAWSTAMP_L_SUB 4
+#define TX_RAWSTAMP_H_SUB 8
 #define LEN_TX_STAMP LEN_STAMP
 
 // timing register (for delayed RX/TX)

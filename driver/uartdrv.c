@@ -120,7 +120,7 @@ void uartSetup(void)
 	uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
 	uartInit.refFreq      = 0;              /* Provide information on reference frequency. When set to 0, the reference frequency is */
 	uartInit.baudrate     = 460800;         /* Baud rate *///115200 transfers to 148720
-	uartInit.oversampling = usartOVS8;     /* Oversampling. Range is 4x, 6x, 8x or 16x */
+	uartInit.oversampling = usartOVS4;     /* Oversampling. Range is 4x, 6x, 8x or 16x */
 	uartInit.databits     = usartDatabits8; /* Number of data bits. Range is 4 to 10 */
 	uartInit.parity       = usartNoParity; /* Parity mode */
 	uartInit.stopbits     = usartStopbits1; /* Number of stop bits. Range is 0 to 2 */

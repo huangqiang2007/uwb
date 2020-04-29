@@ -67,6 +67,10 @@ static void dummy(){
 //	tx_times = tx_start_times - tx_finish_times;
 }
 
+static void ReceiveTimestamp(){
+	//dwGetRawReceiveTimestamp(&g_dwDev, &g_dwTime);
+}
+
 void dwInit(dwDevice_t* dev, uint16_t PanID, uint16_t sourceAddr)
 {
 	dev->userdata = NULL;
@@ -683,13 +687,13 @@ void dwSetcentreNodeConfig(dwDevice_t* dev) {
 //		dwSetFrameFilterBehaveCoordinator(dev, true);
 
 		//interrupt active for complete transmit
-		dwInterruptOnSent(dev, true);
+		dwInterruptOnSent(dev, false);
 		//interrupt active for complete receive
 		dwInterruptOnReceived(dev, true);
 		//interrupt active for receiver timeout when dwSetReceiveWaitTimeout() is enable true
 		dwInterruptOnReceiveTimeout(dev, false);
 		//interrupt active for receive error
-		dwInterruptOnReceiveFailed(dev, true);
+		dwInterruptOnReceiveFailed(dev, false);
 		//interrupt active for receive time stamp when time stamp is enable
 		dwInterruptOnReceiveTimestampAvailable(dev, false);
 		//interrupt active for auto acknowledgment trigger when time auto acknowledgment is enable
@@ -748,8 +752,8 @@ void dwSetSubNodeConfig(dwDevice_t* dev) {
 		dwInterruptOnSent(dev, false);
 		dwInterruptOnReceived(dev, true);
 		dwInterruptOnReceiveTimeout(dev, false);
-		dwInterruptOnReceiveFailed(dev, true);
-		dwInterruptOnReceiveTimestampAvailable(dev, false);
+		dwInterruptOnReceiveFailed(dev, false);
+		dwInterruptOnReceiveTimestampAvailable(dev, true);
 		dwInterruptOnAutomaticAcknowledgeTrigger(dev, false);
 
 		// default mode when powering up the chip
@@ -799,19 +803,35 @@ void dwGetData(dwDevice_t* dev, uint8_t data[], unsigned int n) {
 }
 
 void dwGetTransmitTimestamp(dwDevice_t* dev, dwTime_t* time) {
-	dwSpiRead(dev, TX_TIME, TX_STAMP_SUB, time->raw, LEN_TX_STAMP);
+	uint32_t TD_tmp;
+
+    //dwSpiRead(dev, TX_TIME, TX_STAMP_SUB, time->raw, LEN_TX_STAMP);
+	time->low32 = dwSpiRead32(dev, TX_TIME, TX_RAWSTAMP_L_SUB);
+	time->high32 = dwSpiRead32(dev, TX_TIME, TX_RAWSTAMP_H_SUB);
+	time->full = (time->high32 & 0x0000ffff) << 16;
+	time->full |= (time->low32 >> 16) & 0x0000ffff; //250MHz per unit
+	TD_tmp = RTT_t[i];
+	RTT_t[i] = (time->full / 10) >> 3; //25MHz/8
+	TD[i] = RTT_t[i] - TD_tmp;
 }
 
 void dwGetReceiveTimestamp(dwDevice_t* dev, dwTime_t* time) {
-  time->full = 0;
+    time->full = 0;
 	dwSpiRead(dev, RX_TIME, RX_STAMP_SUB, time->raw, LEN_RX_STAMP);
 	// correct timestamp (i.e. consider range bias)
 	dwCorrectTimestamp(dev, time);
 }
 
 void dwGetRawReceiveTimestamp(dwDevice_t* dev, dwTime_t* time) {
-  time->full = 0;
-	dwSpiRead(dev, RX_TIME, RX_STAMP_SUB, time->raw, LEN_RX_STAMP);
+	uint32_t RTT_r;
+//    time->full = 0;
+//	dwSpiRead(dev, RX_TIME, RX_STAMP_SUB, time->raw, LEN_RX_STAMP);
+	time->low32 = dwSpiRead32(dev, RX_TIME, RX_RAWSTAMP_L_SUB);
+	time->high32 = dwSpiRead32(dev, RX_TIME, RX_RAWSTAMP_H_SUB);
+	time->full = (time->high32 & 0x0000ffff) << 16;
+	time->full |= (time->low32 >> 16) & 0x0000ffff; //250MHz per unit
+	RTT_r = (time->full / 10) >> 3; //25MHz/8 per mcu timer unit
+	TOA_t[i] = RTT_r - RTT_t[i];
 }
 
 void dwCorrectTimestamp(dwDevice_t* dev, dwTime_t* timestamp) {
@@ -1381,7 +1401,7 @@ void dwTune(dwDevice_t *dev) {
 
 // FIXME: This is a test!
 void (*_handleError)(void) = dummy;
-void (*_handleReceiveTimestampAvailable)(void) = dummy;
+void (*_handleReceiveTimestampAvailable)(void) = ReceiveTimestamp;
 
 void dwHandleInterrupt(dwDevice_t *dev)
 {
@@ -1395,10 +1415,10 @@ void dwHandleInterrupt(dwDevice_t *dev)
 		dwClearTransmitStatus(dev);
 		(*dev->handleSent)(dev);
 	}
-	if(dwIsReceiveTimestampAvailable(dev) && _handleReceiveTimestampAvailable != 0) {
-		dwClearReceiveTimestampAvailableStatus(dev);
-		(*_handleReceiveTimestampAvailable)();
-	}
+//	if(dwIsReceiveTimestampAvailable(dev) && _handleReceiveTimestampAvailable != 0) {
+//		dwClearReceiveTimestampAvailableStatus(dev);
+//		(*_handleReceiveTimestampAvailable)();
+//	}
 	if(dwIsReceiveFailed(dev)) {
 		dwClearReceiveStatus(dev);
 		dwRxSoftReset(dev); // Needed due to error in the RX auto-re-enable functionality. See page 35 of DW1000 manual, v2.13.
@@ -1684,10 +1704,8 @@ void dwSendData_noTurnon(dwDevice_t *dev, uint8_t data[], uint32_t len)
 void dwRecvData(dwDevice_t *dev)
 {
 	int len = 0;
-	memset((void *)&g_dwMacFrameRecv, 0x00, sizeof(g_dwMacFrameRecv));
-//	dwNewReceive(dev);
-//	dwStartReceive(dev);
-	len = dwGetDataLength(dev);
+	//len = dwGetDataLength(dev);
+	len = sizeof(g_recvSlaveFr);
 //	dwGetData(dev, (uint8_t *)&g_dwMacFrameRecv, len);
 //	memcpy((uint8_t *)&g_recvSlaveFr, g_dwMacFrameRecv.Payload, sizeof(g_recvSlaveFr));
 	dwGetData(dev, (uint8_t *)&g_recvSlaveFr, len);
@@ -1700,9 +1718,10 @@ void dwRecvData(dwDevice_t *dev)
 
 void dwSentData(dwDevice_t *dev)
 {
-	time_us[i] = g_Ticks * MS_COUNT + TIMER_CounterGet(TIMER0); //get the initial time;
-	TD[i] = time_us[i] - timer_cnt[i]; //get the interval time
-	timer_cnt[i] = time_us[i]; //get the initial time
+	//time_us[i] = g_Ticks * MS_COUNT + TIMER_CounterGet(TIMER0); //get the initial time;
+	//TD[i] = time_us[i] - timer_cnt[i]; //get the interval time
+	//timer_cnt[i] = time_us[i]; //get the initial time
+	dwGetTransmitTimestamp(dev, &g_dwTime);
 }
 
 void dwReceiveFailed(dwDevice_t *dev){
@@ -1720,5 +1739,5 @@ void dwReceiveFailed(dwDevice_t *dev){
 //
 //	if (!checkSleepCMD(&g_recvSlaveFr))
 //		g_dataRecvSleep = true;
-//	g_dataRecvFail = true;
+
 }

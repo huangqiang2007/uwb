@@ -28,7 +28,7 @@
 #include "libdw1000Spi.h"
 
 dwDevice_t g_dwDev;
-
+dwTime_t g_dwTime;
 enum {PAN_ID1 = 0x0001, PAN_ID2};
 enum {SLAVE_ADDR1 = 0x0001, SLAVE_ADDR2, SLAVE_ADDR3, SLAVE_ADDR4};
 enum {CENTER_ADDR1 = 0x0011, CENTER_ADDR2};

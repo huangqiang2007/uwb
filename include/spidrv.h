@@ -9,7 +9,7 @@
 typedef struct {
 	int txlen;
 	int rxlen;
-	uint8_t txBuf[UWB_MAX_SPI_LEN];
+	uint8_t txBuf[UWB_MAX_SPI_LEN+3];
 	uint8_t *rxBuf;
 	volatile bool recvDone;
 	volatile bool sendDone;
